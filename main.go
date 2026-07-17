@@ -34,8 +34,10 @@ type Catalog struct {
 
 var version = "dev"
 
-const changelog = `0.3.2
+const changelog = `0.3.4
   + update workflows to use the correct github repo
+  + interactive picker now keeps the Core category visible and selectable
+    when its skills are already installed
 
 0.3.1
   + -a opencode flag added to npx skills add command (project-level needs agent)

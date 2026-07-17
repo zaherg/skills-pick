@@ -1,3 +1,8 @@
+0.3.4
+  + interactive picker now keeps the Core category visible and selectable
+    when its skills are already installed
+  + update workflows to use the correct github repo
+
 0.3.1
   + -a opencode flag added to npx skills add command (project-level needs agent)
   + bumped default agent to opencode for project installations
