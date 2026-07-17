@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "name": "Engineering",
+      "skills": [
+        {
+          "name": "systematic-debugging",
+          "source": "obra/superpowers",
+          "description": "Reproduce, diagnose, and fix bugs systematically"
+        },
+        {
+          "name": "test-driven-development",
+          "source": "obra/superpowers",
+          "description": "Write tests first, then implement the code"
+        },
+        {
+          "name": "subagent-driven-development",
+          "source": "obra/superpowers",
+          "description": "Execute multi-file changes via subagents"
+        },
+        {
+          "name": "writing-skills",
+          "source": "obra/superpowers",
+          "description": "Author and install agent skills"
+        },
+        {
+          "name": "verification-before-completion",
+          "source": "obra/superpowers",
+          "description": "Run tests before claiming completion"
+        },
+        {
+          "name": "dispatching-parallel-agents",
+          "source": "obra/superpowers",
+          "description": "Dispatch independent work to parallel agents"
+        },
+        {
+          "name": "ce-code-review",
+          "source": "everyinc/compound-engineering-plugin",
+          "description": "Review code for bugs, regressions, and standards"
+        },
+        {
+          "name": "ce-compound",
+          "source": "everyinc/compound-engineering-plugin",
+          "description": "Capture solutions and project vocabulary"
+        },
+        {
+          "name": "ce-simplify-code",
+          "source": "everyinc/compound-engineering-plugin",
+          "description": "Simplify code for clarity, reuse, and efficiency"
+        }
+      ]
+    },
+    {
+      "name": "Design",
+      "skills": [
+        {
+          "name": "design-taste-frontend",
+          "source": "Leonxlnx/taste-skill",
+          "description": "Premium anti-slop frontend for landing pages and portfolios"
+        },
+        {
+          "name": "high-end-visual-design",
+          "source": "Leonxlnx/taste-skill",
+          "description": "High-end agency-quality visual design systems"
+        },
+        {
+          "name": "impeccable",
+          "source": "pbakaus/impeccable",
+          "description": "Design, audit, polish, and improve frontend interfaces"
+        },
+        {
+          "name": "minimalist-ui",
+          "source": "Leonxlnx/taste-skill",
+          "description": "Clean editorial-style warm minimalist interfaces"
+        },
+        {
+          "name": "industrial-brutalist-ui",
+          "source": "Leonxlnx/taste-skill",
+          "description": "Raw mechanical Swiss-meets-terminal interfaces"
+        },
+        {
+          "name": "redesign-existing-projects",
+          "source": "Leonxlnx/taste-skill",
+          "description": "Upgrade existing sites and apps to premium quality"
+        },
+        {
+          "name": "baoyu-design",
+          "source": "JimLiu/baoyu-design",
+          "description": "Create polished design artifacts as self-contained HTML"
+        },
+        {
+          "name": "accessibility-audit",
+          "source": "Owl-Listener/designer-skills",
+          "description": "WCAG accessibility audit with severity ratings and remediation"
+        }
+      ]
+    },
+    {
+      "name": "SEO & Marketing",
+      "skills": [
+        {
+          "name": "seo-audit",
+          "source": "coreyhaines31/marketingskills",
+          "description": "Audit, review, and diagnose SEO issues"
+        },
+        {
+          "name": "programmatic-seo",
+          "source": "coreyhaines31/marketingskills",
+          "description": "Build SEO-driven pages at scale using templates"
+        }
+      ]
+    },
+    {
+      "name": "Tools",
+      "skills": [
+        {
+          "name": "find-skills",
+          "source": "vercel-labs/skills",
+          "description": "Discover and install new agent skills"
+        },
+        {
+          "name": "release-skills",
+          "source": "JimLiu/baoyu-design",
+          "description": "Universal release workflow for any project"
+        },
+        {
+          "name": "consensus",
+          "source": "zaherg/chorus",
+          "description": "Evaluate prompts or decisions by multiple independent AI models"
+        },
+        {
+          "name": "delegate",
+          "source": "zaherg/chorus",
+          "description": "Shell out to external CLI coding agents for focused sub-tasks"
+        }
+      ]
+    }
+  ]
+}

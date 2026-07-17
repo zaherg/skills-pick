@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  CANONICAL_REPOSITORY: https://git.zaher.dev/zaherg/skills-pick.git
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the complete tag history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify tag format
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: test "$(printf '%s' "$RELEASE_TAG" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$')" = "$RELEASE_TAG"
+
+      - name: Verify canonical and mirrored tag identity
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          MIRRORED_REPOSITORY: https://github.com/${{ github.repository }}.git
+          TAG_COMMIT: ${{ github.sha }}
+        run: |
+          canonical_sha="$(git ls-remote "$CANONICAL_REPOSITORY" "refs/tags/${RELEASE_TAG}^{}" | awk '{print $1}')"
+          mirrored_sha="$(git ls-remote "$MIRRORED_REPOSITORY" "refs/tags/${RELEASE_TAG}^{}" | awk '{print $1}')"
+          test -n "$canonical_sha"
+          test -n "$mirrored_sha"
+          test "$canonical_sha" = "$mirrored_sha"
+          test "$mirrored_sha" = "$TAG_COMMIT"
+
+      - name: Verify a successful CI run for this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          successful_runs="$(gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${COMMIT_SHA}&status=completed&per_page=100" \
+            --jq '[.workflow_runs[] | select(.name == "CI" and .event == "push" and .conclusion == "success")] | length')"
+          test "$successful_runs" -gt 0
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+
+      - name: Run vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build
+        run: go build -o /tmp/skills-pick ./
+
+      - name: Validate GoReleaser snapshot
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --snapshot --clean
+
+      - name: Refuse an existing release or release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 2>/dev/null || true)"
+          if test -n "$release_json"; then
+            echo "A release already exists for $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the complete tag history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Publish release archives and checksums
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

@@ -1,0 +1,1 @@
+- After building the binary file, move it to `~/bin` and overwrite any existing file there.
