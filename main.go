@@ -34,7 +34,10 @@ type Catalog struct {
 
 var version = "dev"
 
-const changelog = `0.3.1
+const changelog = `0.3.2
+  + update workflows to use the correct github repo
+
+0.3.1
   + -a opencode flag added to npx skills add command (project-level needs agent)
   + bumped default agent to opencode for project installations
 
@@ -376,7 +379,7 @@ func cmdAdd(args []string) {
 	}
 
 	path := catalogOverridePath()
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create directory: %v\n", err)
 		os.Exit(1)
 	}
@@ -385,7 +388,7 @@ func cmdAdd(args []string) {
 		fmt.Fprintf(os.Stderr, "failed to serialize catalog: %v\n", err)
 		os.Exit(1)
 	}
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write catalog: %v\n", err)
 		os.Exit(1)
 	}
