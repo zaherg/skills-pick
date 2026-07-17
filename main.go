@@ -464,10 +464,7 @@ func (t *tui) buildItems() {
 
 	for _, cat := range t.catalog.Categories {
 		for _, s := range cat.Skills {
-			if t.installed[s.Name] {
-				continue
-			}
-			if t.filter == "" || strings.Contains(strings.ToLower(s.Name), strings.ToLower(t.filter)) {
+			if t.skillVisible(cat.Name, s) {
 				catHasVisible[cat.Name] = true
 			}
 		}
@@ -479,10 +476,7 @@ func (t *tui) buildItems() {
 		}
 		t.items = append(t.items, visibleItem{isHeader: true, name: cat.Name})
 		for _, s := range cat.Skills {
-			if t.installed[s.Name] {
-				continue
-			}
-			if t.filter == "" || strings.Contains(strings.ToLower(s.Name), strings.ToLower(t.filter)) {
+			if t.skillVisible(cat.Name, s) {
 				t.items = append(t.items, visibleItem{
 					name:   s.Name,
 					source: s.Source,
@@ -499,6 +493,13 @@ func (t *tui) buildItems() {
 	} else if t.cursor >= skillCount {
 		t.cursor = skillCount - 1
 	}
+}
+
+func (t *tui) skillVisible(category string, skill Skill) bool {
+	if t.filter != "" && !strings.Contains(strings.ToLower(skill.Name), strings.ToLower(t.filter)) {
+		return false
+	}
+	return category == "Core" || !t.installed[skill.Name]
 }
 
 func (t *tui) numSkills() int {

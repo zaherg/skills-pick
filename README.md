@@ -99,8 +99,7 @@ there.
 
 The binary embeds `catalog.json` at build time. With no arguments it starts an
 interactive terminal UI; use `j`/`k` to move, `space` to select, `/` to filter,
-`enter` to install, and `q` to quit. Already-installed skills are hidden when
-the picker scans these global directories:
+`enter` to install, and `q` to quit. The picker scans these global directories:
 
 ```text
 ~/.agents/skills
@@ -115,6 +114,9 @@ and these directories in the current project:
 .claude/skills
 .opencode/skills
 ```
+
+Already-installed skills are hidden from the picker except for the `Core`
+category, whose entries remain available for explicit project installation.
 
 Install and update operations invoke `npx --yes skills ... -a opencode`, so Node.js, npm's
 `npx`, and network access to the npm registry and skill sources are required.
