@@ -1,3 +1,6 @@
+0.3.5
+  + expanded the embedded catalog with the Core category and additional skills
+
 0.3.4
   + interactive picker now keeps the Core category visible and selectable
     when its skills are already installed
