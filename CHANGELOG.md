@@ -1,4 +1,4 @@
-Unreleased
+0.3.6
   + interactive picker hides installed skills in every category, including Core
 
 0.3.5

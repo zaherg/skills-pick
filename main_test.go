@@ -33,6 +33,16 @@ func TestInjectedVersionRendersConsistently(t *testing.T) {
 	}
 }
 
+func TestChangelogCommandMatchesChangelogFile(t *testing.T) {
+	want, err := os.ReadFile("CHANGELOG.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changelog != string(want) {
+		t.Fatalf("changelog command output differs from CHANGELOG.md")
+	}
+}
+
 func TestEmbeddedCatalogIsValid(t *testing.T) {
 	cat := loadCatalog()
 	if cat.Version < 1 || len(cat.Categories) == 0 {

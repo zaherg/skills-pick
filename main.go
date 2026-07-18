@@ -34,16 +34,16 @@ type Catalog struct {
 
 var version = "dev"
 
-const changelog = `Unreleased
+const changelog = `0.3.6
   + interactive picker hides installed skills in every category, including Core
 
 0.3.5
   + expanded the embedded catalog with the Core category and additional skills
 
 0.3.4
-  + update workflows to use the correct github repo
   + interactive picker now keeps the Core category visible and selectable
     when its skills are already installed
+  + update workflows to use the correct github repo
 
 0.3.1
   + -a opencode flag added to npx skills add command (project-level needs agent)
