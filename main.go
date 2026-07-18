@@ -34,7 +34,10 @@ type Catalog struct {
 
 var version = "dev"
 
-const changelog = `0.3.5
+const changelog = `Unreleased
+  + interactive picker hides installed skills in every category, including Core
+
+0.3.5
   + expanded the embedded catalog with the Core category and additional skills
 
 0.3.4
@@ -469,7 +472,7 @@ func (t *tui) buildItems() {
 
 	for _, cat := range t.catalog.Categories {
 		for _, s := range cat.Skills {
-			if t.skillVisible(cat.Name, s) {
+			if t.skillVisible(s) {
 				catHasVisible[cat.Name] = true
 			}
 		}
@@ -481,7 +484,7 @@ func (t *tui) buildItems() {
 		}
 		t.items = append(t.items, visibleItem{isHeader: true, name: cat.Name})
 		for _, s := range cat.Skills {
-			if t.skillVisible(cat.Name, s) {
+			if t.skillVisible(s) {
 				t.items = append(t.items, visibleItem{
 					name:   s.Name,
 					source: s.Source,
@@ -500,11 +503,11 @@ func (t *tui) buildItems() {
 	}
 }
 
-func (t *tui) skillVisible(category string, skill Skill) bool {
+func (t *tui) skillVisible(skill Skill) bool {
 	if t.filter != "" && !strings.Contains(strings.ToLower(skill.Name), strings.ToLower(t.filter)) {
 		return false
 	}
-	return category == "Core" || !t.installed[skill.Name]
+	return !t.installed[skill.Name]
 }
 
 func (t *tui) numSkills() int {

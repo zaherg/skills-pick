@@ -1,3 +1,6 @@
+Unreleased
+  + interactive picker hides installed skills in every category, including Core
+
 0.3.5
   + expanded the embedded catalog with the Core category and additional skills
 

@@ -115,8 +115,7 @@ and these directories in the current project:
 .opencode/skills
 ```
 
-Already-installed skills are hidden from the picker except for the `Core`
-category, whose entries remain available for explicit project installation.
+Already-installed skills are hidden from the picker in every category.
 
 Install and update operations invoke `npx --yes skills ... -a opencode`, so Node.js, npm's
 `npx`, and network access to the npm registry and skill sources are required.

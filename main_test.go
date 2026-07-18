@@ -69,13 +69,15 @@ func TestInvalidCatalogOverrideExitsWithParseError(t *testing.T) {
 	}
 }
 
-func TestTUIBuildItemsKeepsInstalledCoreSkillsSelectable(t *testing.T) {
+func TestTUIBuildItemsHidesInstalledSkillsRegardlessOfCategory(t *testing.T) {
 	coreSkill := Skill{Name: "ce-plan", Source: "source/core", Description: "plan"}
 	engineeringSkill := Skill{Name: "go-tool", Source: "source/engineering", Description: "tool"}
+	designSkill := Skill{Name: "design-tool", Source: "source/design", Description: "design"}
 	state := &tui{
 		catalog: &Catalog{Categories: []Category{
 			{Name: "Core", Skills: []Skill{coreSkill}},
 			{Name: "Engineering", Skills: []Skill{engineeringSkill}},
+			{Name: "Design", Skills: []Skill{designSkill}},
 		}},
 		installed: map[string]bool{
 			coreSkill.Name:        true,
@@ -86,20 +88,20 @@ func TestTUIBuildItemsKeepsInstalledCoreSkillsSelectable(t *testing.T) {
 	state.buildItems()
 
 	if len(state.items) != 2 {
-		t.Fatalf("items = %#v, want Core header and skill row", state.items)
+		t.Fatalf("items = %#v, want only the uninstalled skill and its header", state.items)
 	}
-	if !state.items[0].isHeader || state.items[0].name != "Core" {
-		t.Fatalf("first item = %#v, want Core header", state.items[0])
+	if !state.items[0].isHeader || state.items[0].name != "Design" {
+		t.Fatalf("first item = %#v, want Design header", state.items[0])
 	}
-	if state.items[1].isHeader || state.items[1].name != coreSkill.Name {
-		t.Fatalf("second item = %#v, want selectable Core skill", state.items[1])
+	if state.items[1].isHeader || state.items[1].name != designSkill.Name {
+		t.Fatalf("second item = %#v, want uninstalled Design skill", state.items[1])
 	}
 	if got := state.numSkills(); got != 1 {
 		t.Fatalf("numSkills() = %d, want 1", got)
 	}
 }
 
-func TestTUIBuildItemsFiltersInstalledCoreSkillsByName(t *testing.T) {
+func TestTUIBuildItemsDoesNotRevealInstalledSkillWhenFiltering(t *testing.T) {
 	coreSkill := Skill{Name: "ce-plan", Source: "source/core", Description: "plan"}
 	state := &tui{
 		catalog:   &Catalog{Categories: []Category{{Name: "Core", Skills: []Skill{coreSkill}}}},
@@ -109,36 +111,8 @@ func TestTUIBuildItemsFiltersInstalledCoreSkillsByName(t *testing.T) {
 
 	state.buildItems()
 
-	if len(state.items) != 2 || state.items[0].name != "Core" || state.items[1].name != coreSkill.Name {
-		t.Fatalf("filtered items = %#v, want matching Core header and skill", state.items)
-	}
-
-	state.filter = "does-not-match"
-	state.buildItems()
 	if len(state.items) != 0 {
-		t.Fatalf("nonmatching filter items = %#v, want no items", state.items)
-	}
-}
-
-func TestTUISelectsVisibleCoreSkill(t *testing.T) {
-	coreSkill := Skill{Name: "ce-plan", Source: "source/core", Description: "plan"}
-	state := &tui{
-		catalog:   &Catalog{Categories: []Category{{Name: "Core", Skills: []Skill{coreSkill}}}},
-		installed: map[string]bool{coreSkill.Name: true},
-		selected:  make(map[string]bool),
-	}
-	state.buildItems()
-
-	if !state.handleNormalInput([]byte{' '}) {
-		t.Fatal("space input should keep the TUI active")
-	}
-	if !state.selected[coreSkill.Name] {
-		t.Fatalf("Core skill was not selected: %#v", state.selected)
-	}
-
-	state.handleNormalInput([]byte{' '})
-	if state.selected[coreSkill.Name] {
-		t.Fatalf("Core skill was not deselected: %#v", state.selected)
+		t.Fatalf("filtered items = %#v, want installed skill to stay hidden", state.items)
 	}
 }
 
@@ -158,11 +132,11 @@ func TestTUIBuildItemsPreservesOrderAndClampsCursor(t *testing.T) {
 
 	state.buildItems()
 
-	if got := []string{state.items[0].name, state.items[1].name, state.items[2].name, state.items[3].name, state.items[4].name, state.items[5].name}; strings.Join(got, ",") != "Core,ce-plan,Engineering,go-tool,Design,design-tool" {
+	if got := []string{state.items[0].name, state.items[1].name, state.items[2].name, state.items[3].name}; strings.Join(got, ",") != "Engineering,go-tool,Design,design-tool" {
 		t.Fatalf("item order = %v", got)
 	}
-	if got := state.cursor; got != 2 {
-		t.Fatalf("cursor = %d, want last selectable skill index 2", got)
+	if got := state.cursor; got != 1 {
+		t.Fatalf("cursor = %d, want last selectable skill index 1", got)
 	}
 
 	state.filter = "go-tool"
