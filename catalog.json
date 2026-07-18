@@ -2,8 +2,38 @@
   "version": 1,
   "categories": [
     {
-      "name": "Engineering",
+      "name": "Core",
       "skills": [
+        {
+          "name": "ce-brainstorm",
+          "source": "everyinc/compound-engineering-plugin",
+          "description": "Explore vague ideas into a requirements-only plan"
+        },
+        {
+          "name": "ce-code-review",
+          "source": "everyinc/compound-engineering-plugin",
+          "description": "Review code for bugs, regressions, and standards"
+        },
+        {
+          "name": "ce-compound",
+          "source": "everyinc/compound-engineering-plugin",
+          "description": "Capture solutions and project vocabulary"
+        },
+        {
+          "name": "ce-compound-refresh",
+          "source": "everyinc/compound-engineering-plugin",
+          "description": "Refresh docs/solutions learnings against the current codebase"
+        },
+        {
+          "name": "ce-plan",
+          "source": "everyinc/compound-engineering-plugin",
+          "description": "Create structured plans for multi-step work"
+        },
+        {
+          "name": "ce-work",
+          "source": "everyinc/compound-engineering-plugin",
+          "description": "Execute a plan or concrete work end-to-end"
+        },
         {
           "name": "systematic-debugging",
           "source": "obra/superpowers",
@@ -23,7 +53,12 @@
           "name": "writing-skills",
           "source": "obra/superpowers",
           "description": "Author and install agent skills"
-        },
+        }
+      ]
+    },
+    {
+      "name": "Engineering",
+      "skills": [
         {
           "name": "verification-before-completion",
           "source": "obra/superpowers",
@@ -35,19 +70,39 @@
           "description": "Dispatch independent work to parallel agents"
         },
         {
-          "name": "ce-code-review",
-          "source": "everyinc/compound-engineering-plugin",
-          "description": "Review code for bugs, regressions, and standards"
-        },
-        {
-          "name": "ce-compound",
-          "source": "everyinc/compound-engineering-plugin",
-          "description": "Capture solutions and project vocabulary"
-        },
-        {
           "name": "ce-simplify-code",
           "source": "everyinc/compound-engineering-plugin",
           "description": "Simplify code for clarity, reuse, and efficiency"
+        },
+        {
+          "name": "ponytail",
+          "source": "DietrichGebert/ponytail",
+          "description": "Forces the laziest solution that actually works, simplest, shortest, most minimal. "
+        },
+        {
+          "name": "ponytail-audit",
+          "source": "DietrichGebert/ponytail",
+          "description": "Whole-repo audit for over-engineering"
+        },
+        {
+          "name": "ponytail-debt",
+          "source": "DietrichGebert/ponytail",
+          "description": "Harvest every `ponytail:` comment in the codebase into a debt ledger, so the deliberate shortcuts and deferrals ponytail leaves behind get tracked instead of rotting into `later means never`"
+        },
+        {
+          "name": "ponytail-gain",
+          "source": "DietrichGebert/ponytail",
+          "description": "Show ponytail's measured impact as a compact scoreboard: less code, less cost, more speed, from the benchmark medians"
+        },
+        {
+          "name": "ponytail-help",
+          "source": "DietrichGebert/ponytail",
+          "description": "Quick-reference card for all ponytail modes, skills, and commands. One-shot display, not a persistent mode"
+        },
+        {
+          "name": "ponytail-review",
+          "source": "DietrichGebert/ponytail",
+          "description": "Code review focused exclusively on over-engineering"
         }
       ]
     },
@@ -108,6 +163,11 @@
           "name": "programmatic-seo",
           "source": "coreyhaines31/marketingskills",
           "description": "Build SEO-driven pages at scale using templates"
+        },
+        {
+          "name": "video",
+          "source": "coreyhaines31/marketingskills",
+          "description": "Create, generate, or produce AI and programmatic video content"
         }
       ]
     },
