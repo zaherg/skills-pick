@@ -99,7 +99,9 @@ there.
 
 The binary embeds `catalog.json` at build time. With no arguments it starts an
 interactive terminal UI; use `j`/`k` to move, `space` to select, `/` to filter,
-`enter` to install, and `q` to quit. The picker scans these global directories:
+`enter` to install, and `q` to quit. Each skill's catalog description is shown
+beneath its name, word-wrapped to the terminal width. The picker scans these
+global directories:
 
 ```text
 ~/.agents/skills

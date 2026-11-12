@@ -155,3 +155,33 @@ func TestTUIBuildItemsPreservesOrderAndClampsCursor(t *testing.T) {
 		t.Fatalf("filtered cursor = %d, want 0", got)
 	}
 }
+
+func TestDescriptionLinesWrapsWithinWidth(t *testing.T) {
+	desc := "Review code for bugs, regressions, and standards across the whole change set"
+	got := descriptionLines(desc, 30)
+	want := []string{
+		"    Review code for bugs,",
+		"    regressions, and",
+		"    standards across the",
+		"    whole change set",
+	}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("descriptionLines() = %q, want %q", got, want)
+	}
+	for _, l := range got {
+		if len([]rune(l)) >= 30 {
+			t.Fatalf("line %q exceeds width", l)
+		}
+	}
+}
+
+func TestDescriptionLinesSplitsOverlongWordsAndSkipsEmpty(t *testing.T) {
+	if got := descriptionLines("   ", 80); len(got) != 0 {
+		t.Fatalf("empty description produced lines: %q", got)
+	}
+	got := descriptionLines("abcdefghijklmnopqrstuvwxyz end", 15)
+	want := []string{"    abcdefghij", "    klmnopqrst", "    uvwxyz end"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("descriptionLines() = %q, want %q", got, want)
+	}
+}

@@ -532,6 +532,9 @@ func (t *tui) render() {
 		}
 		skillLineIdx[skillCount] = len(lines)
 		lines = append(lines, line{lineText})
+		for _, d := range descriptionLines(it.desc, t.termW) {
+			lines = append(lines, line{"\x1b[2m" + d + "\x1b[0m"})
+		}
 		skillCount++
 	}
 
@@ -590,6 +593,41 @@ func (t *tui) render() {
 	}
 
 	os.Stdout.WriteString(buf.String())
+}
+
+// descIndent aligns description lines with the skill name after the "[ ] " prefix.
+const descIndent = "    "
+
+// descriptionLines word-wraps desc to fit within width columns, including the
+// indent. Lines must never exceed the terminal width: an auto-wrapped line
+// would desynchronize the viewport's line accounting.
+func descriptionLines(desc string, width int) []string {
+	avail := max(width-len(descIndent)-1, 10)
+	var out []string
+	var cur []rune
+	flush := func() {
+		if len(cur) > 0 {
+			out = append(out, descIndent+string(cur))
+			cur = cur[:0]
+		}
+	}
+	for _, word := range strings.Fields(desc) {
+		w := []rune(word)
+		if len(cur) > 0 && len(cur)+1+len(w) > avail {
+			flush()
+		}
+		for len(w) > avail {
+			flush()
+			out = append(out, descIndent+string(w[:avail]))
+			w = w[avail:]
+		}
+		if len(cur) > 0 {
+			cur = append(cur, ' ')
+		}
+		cur = append(cur, w...)
+	}
+	flush()
+	return out
 }
 
 func (t *tui) loop() {
