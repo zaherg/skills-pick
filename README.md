@@ -156,6 +156,7 @@ skills-pick list                     List catalog skills
 skills-pick <skill> [<skill> ...]    Install named skills directly
 skills-pick add <source> <skill> ... Add skills to the catalog
 skills-pick update                   Run `npx --yes skills update`
+skills-pick upgrade [--force]        Replace this binary with the latest release
 skills-pick changelog                Show the changelog
 skills-pick help                    Show command help
 ```
@@ -174,6 +175,27 @@ skills-pick --catalog ./catalog.json seo-audit ce-plan
 `--version` prints the release version (or `dev` for a locally built binary)
 and exits; `--help` prints the usage text and exits. Unknown direct-install
 names are reported and cause a non-zero exit.
+
+## Upgrading the binary
+
+`skills-pick upgrade` replaces the running executable with the latest release
+from the [GitHub Releases](https://github.com/zaherg/skills-pick/releases) page.
+It finds the executable it was started from, following symlinks to the real
+file, so it works wherever the binary is installed. It then:
+
+1. Reads the latest release from the GitHub API.
+2. Downloads the archive for the current OS and CPU architecture and verifies
+   it against the release's `checksums.txt`.
+3. Extracts the binary next to the existing one, runs its `--version`, and only
+   then renames it over the old binary, keeping the original permissions.
+
+Nothing is replaced when the running version is already the latest or newer.
+Locally built binaries report version `dev` and are refused; pass `--force`
+to replace them (or to reinstall the current release). The directory holding
+the binary must be writable, so a binary in a system directory such as
+`/usr/local/bin` needs the command to run with sufficient permissions. On
+Windows the previous executable is kept as `skills-pick.exe.old`, because a
+running executable cannot be overwritten; the next upgrade removes it.
 
 ## Installation behavior and failures
 

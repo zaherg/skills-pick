@@ -84,6 +84,8 @@ func main() {
 		cmdAdd(args[1:])
 	case "update":
 		cmdUpdate()
+	case "upgrade":
+		cmdUpgrade(args[1:])
 	case "changelog":
 		fmt.Print(changelog)
 	default:
@@ -102,6 +104,7 @@ Commands:
   add <source> <skill> [more skills...] [-c category] [-d description]
                     Add one or more skills from a source to the catalog
   update            Update all installed skills via 'npx skills update'
+  upgrade [--force] Replace this binary with the latest GitHub release
   changelog         Show the changelog
   interactive       Interactive TUI selector (default)
 
