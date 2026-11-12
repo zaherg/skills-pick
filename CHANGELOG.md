@@ -1,3 +1,10 @@
+0.3.7
+  + interactive picker shows each skill's description beneath its name,
+    word-wrapped to the terminal width
+  + upgrade subcommand: replaces the running binary with the latest GitHub
+    release after verifying its checksum and version; refuses dev builds
+    unless --force is given
+
 0.3.6
   + interactive picker hides installed skills in every category, including Core
 
