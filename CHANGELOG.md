@@ -1,3 +1,9 @@
+0.3.8
+  + interactive picker supports selecting a category with space to select or clear all its visible skills, then enter to install
+  + category headings show selected/total counts and partial selections; bulk selection respects filters and excludes installed skills
+  + search supports navigation and selection while typing; canceling a filter restores the full list without clearing selections
+  + batched keyboard input is preserved, and empty search results stay within the terminal viewport
+
 0.3.7
   + interactive picker shows each skill's description beneath its name,
     word-wrapped to the terminal width
