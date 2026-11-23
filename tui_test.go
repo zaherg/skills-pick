@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"maps"
 	"os"
 	"strings"
@@ -150,25 +151,150 @@ func assertFullInputTestList(t *testing.T, state *tui) {
 }
 
 func TestTUIRenderShowsAppliedFilter(t *testing.T) {
+	state := newInputTestTUI()
+	output := captureTUIOutput(t, func() { state.handleFilterInput([]byte{13}) })
+	for _, want := range []string{"Filter: go (esc to clear)\x1b[0m\r\n", "1 selected, enter to install"} {
+		if !strings.Contains(output, want) {
+			t.Errorf("rendered output missing %q: %q", want, output)
+		}
+	}
+}
+
+func TestTUIInputBatches(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		chunks   []string
+		normal   bool
+		filter   string
+		state    tuiState
+		cursor   int
+		selected map[string]bool
+		quit     bool
+	}{
+		{name: "paste", chunks: []string{"-test"}, filter: "go-test", state: stateFilter},
+		{name: "long paste", chunks: []string{"-query-longer-than-sixteen-bytes"}, filter: "go-query-longer-than-sixteen-bytes", state: stateFilter},
+		{name: "edit pasted text", chunks: []string{"-tesx\x7ft"}, filter: "go-test", state: stateFilter},
+		{name: "start search", normal: true, chunks: []string{"/go-test"}, filter: "go-test", state: stateFilter},
+		{name: "navigate and select", chunks: []string{"\x1b[B "}, filter: "go", state: stateFilter, cursor: 1, selected: map[string]bool{"go-test": true}},
+		{name: "home and end", chunks: []string{"\x1b[F \x1b[H "}, filter: "go", state: stateFilter, selected: map[string]bool{"go-test": true, "go-tool": true}},
+		{name: "toggle twice", chunks: []string{"  "}, filter: "go", state: stateFilter, selected: map[string]bool{"go-tool": false}},
+		{name: "apply and select", chunks: []string{"-test\r "}, filter: "go-test", state: stateNormal, selected: map[string]bool{"go-test": true}},
+		{name: "apply and restart", chunks: []string{"\r/go-test"}, filter: "go-test", state: stateFilter},
+		{name: "clear and restart", chunks: []string{"\x1b/go-test"}, filter: "go-test", state: stateFilter},
+		{name: "quit during search", chunks: []string{"-\x03ignored"}, filter: "go-", state: stateFilter, quit: true},
+		{name: "quit after applying", chunks: []string{"\r\x03/ignored"}, filter: "go", state: stateNormal, quit: true},
+		{name: "q after applying", chunks: []string{"\rq/ignored"}, filter: "go", state: stateNormal, quit: true},
+		{name: "ignore unknown CSI", chunks: []string{"\x1b[3~-test"}, filter: "go-test", state: stateFilter},
+		{name: "ignore unknown SS3", chunks: []string{"\x1bOP-test"}, filter: "go-test", state: stateFilter},
+		{name: "split CSI", chunks: []string{"\x1b[", "B "}, filter: "go", state: stateFilter, cursor: 1, selected: map[string]bool{"go-test": true}},
+		{name: "split parameterized CSI", chunks: []string{"\x1b[1;", "5D", "-test"}, filter: "go-test", state: stateFilter},
+		{name: "quit during incomplete CSI", chunks: []string{"\x1b[3", "\x03ignored"}, filter: "go", state: stateFilter, quit: true},
+		{name: "empty batch", chunks: []string{""}, filter: "go", state: stateFilter},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			state := newInputTestTUI()
+			if tc.normal {
+				state.state = stateNormal
+			}
+			keepRunning := true
+			captureTUIOutput(t, func() {
+				for _, chunk := range tc.chunks {
+					keepRunning = state.handleInput([]byte(chunk))
+					if !keepRunning {
+						break
+					}
+				}
+			})
+			if keepRunning == tc.quit || state.filter != tc.filter || state.state != tc.state || state.cursor != tc.cursor {
+				t.Fatalf("running = %v, filter = %q, state = %v, cursor = %d; want %v, %q, %v, %d", keepRunning, state.filter, state.state, state.cursor, !tc.quit, tc.filter, tc.state, tc.cursor)
+			}
+			wantSelected := map[string]bool{"ce-plan": true}
+			maps.Copy(wantSelected, tc.selected)
+			if !maps.Equal(state.selected, wantSelected) {
+				t.Fatalf("selected = %v, want %v", state.selected, wantSelected)
+			}
+		})
+	}
+}
+
+func TestTUILoopReadsBatchesAndStops(t *testing.T) {
+	for _, quit := range []bool{false, true} {
+		t.Run(fmt.Sprintf("ctrl-c=%t", quit), func(t *testing.T) {
+			input, writer, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { input.Close() })
+			t.Cleanup(func() { writer.Close() })
+			query := strings.Repeat("x", 40)
+			keys := "/" + query
+			if quit {
+				keys += "\x03ignored"
+			}
+			if _, err := writer.WriteString(keys); err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.Close(); err != nil {
+				t.Fatal(err)
+			}
+			original := os.Stdin
+			os.Stdin = input
+			t.Cleanup(func() { os.Stdin = original })
+			state := newInputTestTUI()
+			state.state = stateNormal
+			captureTUIOutput(t, state.loop)
+			if state.filter != query || state.state != stateFilter {
+				t.Fatalf("filter = %q, state = %v; want %q, stateFilter", state.filter, state.state, query)
+			}
+		})
+	}
+}
+
+func TestTUIRenderEmptyResultsFitViewport(t *testing.T) {
+	for _, size := range []struct{ height, rows int }{{5, 5}, {6, 5}, {12, 11}, {24, 23}, {40, 39}} {
+		for _, mode := range []tuiState{stateNormal, stateFilter} {
+			t.Run(fmt.Sprintf("height=%d/state=%d", size.height, mode), func(t *testing.T) {
+				state := newInputTestTUI()
+				state.termH = size.height
+				state.state = mode
+				state.filter = "missing"
+				state.buildItems()
+				output := captureTUIOutput(t, state.render)
+				rows := strings.Split(output, "\r\n")
+				if len(rows) != size.rows || len(rows) > size.height {
+					t.Fatalf("rendered %d rows in a %d-row terminal, want %d", len(rows), size.height, size.rows)
+				}
+				if !strings.Contains(rows[0], "skills-pick") || strings.Count(output, "no skills match filter") != 1 {
+					t.Fatalf("missing header or empty-state message: %q", output)
+				}
+				footer := "1 selected, enter to install"
+				if mode == stateFilter {
+					footer = "Filter: missing"
+				}
+				if !strings.Contains(rows[len(rows)-1], footer) {
+					t.Fatalf("last row = %q, want footer %q", rows[len(rows)-1], footer)
+				}
+			})
+		}
+	}
+}
+
+func captureTUIOutput(t *testing.T, render func()) string {
+	t.Helper()
 	output, err := os.CreateTemp(t.TempDir(), "render")
 	if err != nil {
 		t.Fatal(err)
 	}
 	original := os.Stdout
 	os.Stdout = output
-	t.Cleanup(func() {
+	defer func() {
 		os.Stdout = original
 		output.Close()
-	})
-	state := newInputTestTUI()
-	state.handleFilterInput([]byte{13})
+	}()
+	render()
 	data, err := os.ReadFile(output.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Filter: go (esc to clear)\x1b[0m\r\n", "1 selected, enter to install"} {
-		if !strings.Contains(string(data), want) {
-			t.Errorf("rendered output missing %q: %q", want, data)
-		}
-	}
+	return string(data)
 }

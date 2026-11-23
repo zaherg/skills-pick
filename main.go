@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -391,6 +392,7 @@ type tui struct {
 	state     tuiState
 	filter    string
 
+	pendingInput []byte // Incomplete terminal sequence spanning reads.
 	termW, termH int
 	oldState     *term.State
 }
@@ -577,6 +579,7 @@ func (t *tui) render() {
 				buf.WriteString("\r\n")
 			}
 		}
+		skillLines = 0
 	}
 	for skillLines > 0 {
 		buf.WriteString("\r\n")
@@ -645,29 +648,58 @@ func descriptionLines(desc string, width int) []string {
 func (t *tui) loop() {
 	buf := make([]byte, 16)
 	for {
-		n, _ := os.Stdin.Read(buf)
-		if n == 0 {
-			continue
-		}
-		b := buf[:n]
-
-		// Global: Ctrl+C quits from any state
-		if len(b) == 1 && b[0] == 3 {
+		n, err := os.Stdin.Read(buf)
+		if n > 0 && !t.handleInput(buf[:n]) {
 			return
 		}
-
-		if t.state == stateFilter {
-			if t.handleFilterInput(b) {
-				continue
+		if err != nil {
+			if err != io.EOF {
+				fmt.Fprintf(os.Stderr, "failed to read terminal input: %v\n", err)
 			}
 			return
 		}
-
-		if t.handleNormalInput(b) {
-			continue
-		}
-		return
 	}
+}
+
+// handleInput dispatches every key in a read, keeping CSI and SS3 sequences intact.
+// shortcut: a lone Escape stays immediate; timed decoding is needed for split Escape prefixes.
+func (t *tui) handleInput(b []byte) bool {
+	b = append(t.pendingInput, b...)
+	t.pendingInput = nil
+	for len(b) > 0 {
+		keyLen := 1
+		if len(b) >= 2 && b[0] == 0x1b && (b[1] == '[' || b[1] == 'O') {
+			end := 2
+			for end < len(b) && b[end] >= 0x20 && b[end] < 0x40 {
+				end++
+			}
+			if end == len(b) {
+				t.pendingInput = append([]byte(nil), b...)
+				return true
+			}
+			if b[end] < 0x40 || b[end] > 0x7e {
+				// Discard the malformed prefix, but still handle control keys like Ctrl+C.
+				b = b[end:]
+				continue
+			}
+			keyLen = end + 1
+		}
+		key := b[:keyLen]
+		b = b[keyLen:]
+		if len(key) == 1 && key[0] == 3 {
+			return false
+		}
+		var keepRunning bool
+		if t.state == stateFilter {
+			keepRunning = t.handleFilterInput(key)
+		} else {
+			keepRunning = t.handleNormalInput(key)
+		}
+		if !keepRunning {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *tui) handleNormalInput(b []byte) bool {
