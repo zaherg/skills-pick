@@ -119,6 +119,11 @@ and these directories in the current project:
 
 Already-installed skills are hidden from the picker in every category.
 
+To install a whole category, move to its heading with `j`/`k` or the arrow keys, press `space`, then press `enter`.
+Pressing `space` on a fully selected category clears it; individual skills can still be toggled separately.
+Category headings show selected/total counts, with `[-]` indicating a partial selection.
+With a filter active, category selection affects only matching skills; other selections stay unchanged.
+
 Install and update operations invoke `npx --yes skills ... -a opencode`, so Node.js, npm's
 `npx`, and network access to the npm registry and skill sources are required.
 The interactive picker also requires a TTY; running it with redirected or

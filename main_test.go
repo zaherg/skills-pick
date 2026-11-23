@@ -106,8 +106,8 @@ func TestTUIBuildItemsHidesInstalledSkillsRegardlessOfCategory(t *testing.T) {
 	if state.items[1].isHeader || state.items[1].name != designSkill.Name {
 		t.Fatalf("second item = %#v, want uninstalled Design skill", state.items[1])
 	}
-	if got := state.numSkills(); got != 1 {
-		t.Fatalf("numSkills() = %d, want 1", got)
+	if selected, total := state.categorySelection(0); selected != 0 || total != 1 {
+		t.Fatalf("categorySelection(0) = (%d, %d), want (0, 1)", selected, total)
 	}
 }
 
@@ -145,14 +145,14 @@ func TestTUIBuildItemsPreservesOrderAndClampsCursor(t *testing.T) {
 	if got := []string{state.items[0].name, state.items[1].name, state.items[2].name, state.items[3].name}; strings.Join(got, ",") != "Engineering,go-tool,Design,design-tool" {
 		t.Fatalf("item order = %v", got)
 	}
-	if got := state.cursor; got != 1 {
-		t.Fatalf("cursor = %d, want last selectable skill index 1", got)
+	if got := state.cursor; got != 3 {
+		t.Fatalf("cursor = %d, want last selectable item index 3", got)
 	}
 
 	state.filter = "go-tool"
 	state.buildItems()
-	if got := state.cursor; got != 0 {
-		t.Fatalf("filtered cursor = %d, want 0", got)
+	if got := state.cursor; got != 1 {
+		t.Fatalf("filtered cursor = %d, want last selectable item index 1", got)
 	}
 }
 

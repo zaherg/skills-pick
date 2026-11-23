@@ -17,6 +17,7 @@ func newInputTestTUI() *tui {
 		}},
 		selected:  map[string]bool{"ce-plan": true},
 		installed: map[string]bool{"go-installed": true},
+		cursor:    1, // Start these input tests on the first skill, below its category.
 		state:     stateFilter,
 		filter:    "go",
 		termW:     80,
@@ -33,14 +34,16 @@ func TestTUIFilterInputNavigatesAndToggles(t *testing.T) {
 		cursor   int
 		selected map[string]bool
 	}{
-		{" ", 0, map[string]bool{"ce-plan": true, "go-tool": true}},
-		{" ", 0, map[string]bool{"ce-plan": true, "go-tool": false}},
-		{"\x1b[B", 1, map[string]bool{"ce-plan": true, "go-tool": false}},
-		{" ", 1, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
-		{"\x1b[A", 0, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
+		{" ", 1, map[string]bool{"ce-plan": true, "go-tool": true}},
+		{" ", 1, map[string]bool{"ce-plan": true, "go-tool": false}},
+		{"\x1b[B", 2, map[string]bool{"ce-plan": true, "go-tool": false}},
+		{" ", 2, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
 		{"\x1b[A", 1, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
+		{"\x1b[A", 0, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
+		{"\x1b[A", 2, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
 		{"\x1b[B", 0, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
-		{"\x1b[F", 1, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
+		{"\x1b[B", 1, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
+		{"\x1b[F", 2, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
 		{"\x1b[H", 0, map[string]bool{"ce-plan": true, "go-tool": false, "go-test": true}},
 	} {
 		if !state.handleFilterInput([]byte(step.key)) {
@@ -62,12 +65,12 @@ func TestTUIFilterInputWithNoMatches(t *testing.T) {
 		if !state.handleFilterInput([]byte(key)) {
 			t.Fatalf("key %q exited the picker", key)
 		}
-		if state.filter != "gox" || state.numSkills() != 0 || state.cursor != 0 || !maps.Equal(state.selected, map[string]bool{"ce-plan": true}) {
+		if state.filter != "gox" || len(state.items) != 0 || state.cursor != 0 || !maps.Equal(state.selected, map[string]bool{"ce-plan": true}) {
 			t.Fatalf("key %q changed an empty search: %#v", key, state)
 		}
 	}
 	state.handleFilterInput([]byte{127})
-	if state.filter != "go" || state.numSkills() != 2 || state.cursor != 0 {
+	if state.filter != "go" || len(state.items) != 3 || state.cursor != 0 {
 		t.Fatalf("backspace did not restore matching skills: %#v", state)
 	}
 }
@@ -145,7 +148,7 @@ func assertFullInputTestList(t *testing.T, state *tui) {
 	if got, want := strings.Join(names, ","), "Core,ce-plan,Engineering,go-tool,go-test,Design,design-tool"; got != want {
 		t.Fatalf("items = %q, want %q", got, want)
 	}
-	if state.filter != "" || state.cursor < 0 || state.cursor >= state.numSkills() {
+	if state.filter != "" || state.cursor < 0 || state.cursor >= len(state.items) {
 		t.Fatalf("invalid cleared search: filter = %q, cursor = %d", state.filter, state.cursor)
 	}
 }
@@ -171,25 +174,25 @@ func TestTUIInputBatches(t *testing.T) {
 		selected map[string]bool
 		quit     bool
 	}{
-		{name: "paste", chunks: []string{"-test"}, filter: "go-test", state: stateFilter},
+		{name: "paste", chunks: []string{"-test"}, filter: "go-test", state: stateFilter, cursor: 1},
 		{name: "long paste", chunks: []string{"-query-longer-than-sixteen-bytes"}, filter: "go-query-longer-than-sixteen-bytes", state: stateFilter},
 		{name: "edit pasted text", chunks: []string{"-tesx\x7ft"}, filter: "go-test", state: stateFilter},
-		{name: "start search", normal: true, chunks: []string{"/go-test"}, filter: "go-test", state: stateFilter},
-		{name: "navigate and select", chunks: []string{"\x1b[B "}, filter: "go", state: stateFilter, cursor: 1, selected: map[string]bool{"go-test": true}},
-		{name: "home and end", chunks: []string{"\x1b[F \x1b[H "}, filter: "go", state: stateFilter, selected: map[string]bool{"go-test": true, "go-tool": true}},
-		{name: "toggle twice", chunks: []string{"  "}, filter: "go", state: stateFilter, selected: map[string]bool{"go-tool": false}},
-		{name: "apply and select", chunks: []string{"-test\r "}, filter: "go-test", state: stateNormal, selected: map[string]bool{"go-test": true}},
-		{name: "apply and restart", chunks: []string{"\r/go-test"}, filter: "go-test", state: stateFilter},
-		{name: "clear and restart", chunks: []string{"\x1b/go-test"}, filter: "go-test", state: stateFilter},
-		{name: "quit during search", chunks: []string{"-\x03ignored"}, filter: "go-", state: stateFilter, quit: true},
-		{name: "quit after applying", chunks: []string{"\r\x03/ignored"}, filter: "go", state: stateNormal, quit: true},
-		{name: "q after applying", chunks: []string{"\rq/ignored"}, filter: "go", state: stateNormal, quit: true},
-		{name: "ignore unknown CSI", chunks: []string{"\x1b[3~-test"}, filter: "go-test", state: stateFilter},
-		{name: "ignore unknown SS3", chunks: []string{"\x1bOP-test"}, filter: "go-test", state: stateFilter},
-		{name: "split CSI", chunks: []string{"\x1b[", "B "}, filter: "go", state: stateFilter, cursor: 1, selected: map[string]bool{"go-test": true}},
-		{name: "split parameterized CSI", chunks: []string{"\x1b[1;", "5D", "-test"}, filter: "go-test", state: stateFilter},
-		{name: "quit during incomplete CSI", chunks: []string{"\x1b[3", "\x03ignored"}, filter: "go", state: stateFilter, quit: true},
-		{name: "empty batch", chunks: []string{""}, filter: "go", state: stateFilter},
+		{name: "start search", normal: true, chunks: []string{"/go-test"}, filter: "go-test", state: stateFilter, cursor: 1},
+		{name: "navigate and select", chunks: []string{"\x1b[B "}, filter: "go", state: stateFilter, cursor: 2, selected: map[string]bool{"go-test": true}},
+		{name: "home and end", chunks: []string{"\x1b[F \x1b[H\x1b[B "}, filter: "go", state: stateFilter, cursor: 1, selected: map[string]bool{"go-test": true, "go-tool": true}},
+		{name: "toggle twice", chunks: []string{"  "}, filter: "go", state: stateFilter, cursor: 1, selected: map[string]bool{"go-tool": false}},
+		{name: "apply and select", chunks: []string{"-test\r "}, filter: "go-test", state: stateNormal, cursor: 1, selected: map[string]bool{"go-test": true}},
+		{name: "apply and restart", chunks: []string{"\r/go-test"}, filter: "go-test", state: stateFilter, cursor: 1},
+		{name: "clear and restart", chunks: []string{"\x1b/go-test"}, filter: "go-test", state: stateFilter, cursor: 1},
+		{name: "quit during search", chunks: []string{"-\x03ignored"}, filter: "go-", state: stateFilter, cursor: 1, quit: true},
+		{name: "quit after applying", chunks: []string{"\r\x03/ignored"}, filter: "go", state: stateNormal, cursor: 1, quit: true},
+		{name: "q after applying", chunks: []string{"\rq/ignored"}, filter: "go", state: stateNormal, cursor: 1, quit: true},
+		{name: "ignore unknown CSI", chunks: []string{"\x1b[3~-test"}, filter: "go-test", state: stateFilter, cursor: 1},
+		{name: "ignore unknown SS3", chunks: []string{"\x1bOP-test"}, filter: "go-test", state: stateFilter, cursor: 1},
+		{name: "split CSI", chunks: []string{"\x1b[", "B "}, filter: "go", state: stateFilter, cursor: 2, selected: map[string]bool{"go-test": true}},
+		{name: "split parameterized CSI", chunks: []string{"\x1b[1;", "5D", "-test"}, filter: "go-test", state: stateFilter, cursor: 1},
+		{name: "quit during incomplete CSI", chunks: []string{"\x1b[3", "\x03ignored"}, filter: "go", state: stateFilter, cursor: 1, quit: true},
+		{name: "empty batch", chunks: []string{""}, filter: "go", state: stateFilter, cursor: 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			state := newInputTestTUI()

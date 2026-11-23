@@ -110,6 +110,8 @@ Commands:
   interactive       Interactive TUI selector (default)
 
 Without arguments, starts the interactive TUI.
+In the TUI, space toggles a skill or category; enter installs selected skills.
+Category selection includes matching, uninstalled skills when filtering.
 With skill names as arguments, installs them directly.
 
 Examples:
@@ -386,7 +388,7 @@ type visibleItem struct {
 type tui struct {
 	catalog   *Catalog
 	items     []visibleItem // built from catalog for current filter
-	cursor    int           // index into items (always a skill, never header)
+	cursor    int           // index into items, including category headers
 	selected  map[string]bool
 	installed map[string]bool
 	state     tuiState
@@ -433,23 +435,13 @@ func interactive(cat *Catalog) {
 
 func (t *tui) buildItems() {
 	t.items = t.items[:0]
-	catHasVisible := make(map[string]bool)
-
 	for _, cat := range t.catalog.Categories {
+		start := len(t.items)
 		for _, s := range cat.Skills {
 			if t.skillVisible(s) {
-				catHasVisible[cat.Name] = true
-			}
-		}
-	}
-
-	for _, cat := range t.catalog.Categories {
-		if !catHasVisible[cat.Name] {
-			continue
-		}
-		t.items = append(t.items, visibleItem{isHeader: true, name: cat.Name})
-		for _, s := range cat.Skills {
-			if t.skillVisible(s) {
+				if len(t.items) == start {
+					t.items = append(t.items, visibleItem{isHeader: true, name: cat.Name})
+				}
 				t.items = append(t.items, visibleItem{
 					name:   s.Name,
 					source: s.Source,
@@ -459,12 +451,10 @@ func (t *tui) buildItems() {
 		}
 	}
 
-	// Clamp cursor to valid skill range
-	skillCount := t.numSkills()
-	if skillCount == 0 {
+	if len(t.items) == 0 {
 		t.cursor = 0
-	} else if t.cursor >= skillCount {
-		t.cursor = skillCount - 1
+	} else if t.cursor >= len(t.items) {
+		t.cursor = len(t.items) - 1
 	}
 }
 
@@ -475,28 +465,14 @@ func (t *tui) skillVisible(skill Skill) bool {
 	return !t.installed[skill.Name]
 }
 
-func (t *tui) numSkills() int {
-	n := 0
-	for _, it := range t.items {
-		if !it.isHeader {
-			n++
+func (t *tui) categorySelection(header int) (selected, total int) {
+	for i := header + 1; i < len(t.items) && !t.items[i].isHeader; i++ {
+		total++
+		if t.selected[t.items[i].name] {
+			selected++
 		}
 	}
-	return n
-}
-
-func (t *tui) skillIndex(n int) int {
-	// Return item index of the nth skill (0-based)
-	idx := 0
-	for i, it := range t.items {
-		if !it.isHeader {
-			if idx == n {
-				return i
-			}
-			idx++
-		}
-	}
-	return -1
+	return selected, total
 }
 
 func (t *tui) render() {
@@ -504,7 +480,7 @@ func (t *tui) render() {
 	buf.WriteString("\x1b[H\x1b[2J") // clear + home
 
 	// Header
-	buf.WriteString("\x1b[1mskills-pick\x1b[0m  \x1b[2mselect skills to install\x1b[0m\r\n")
+	buf.WriteString("\x1b[1mskills-pick\x1b[0m  \x1b[2mselect skills or categories\x1b[0m\r\n")
 	if t.state == stateFilter {
 		buf.WriteString("  \x1b[2mup/down nav | space toggle | enter apply | esc clear\x1b[0m\r\n")
 	} else {
@@ -525,35 +501,37 @@ func (t *tui) render() {
 	// Build ALL display lines, then slice to viewport
 	type line struct{ text string }
 	var lines []line
-	skillLineIdx := make(map[int]int) // skill cursor index -> display line index
-	skillCount := 0
+	itemLineIdx := make([]int, len(t.items))
 
-	for _, it := range t.items {
-		if it.isHeader {
-			lines = append(lines, line{"\x1b[1m\x1b[33m\xe2\x94\x80\xe2\x94\x80 " + it.name + " \xe2\x94\x80\xe2\x94\x80\x1b[0m"})
-			continue
-		}
-
+	for i, it := range t.items {
 		prefix := "[ ]"
-		if t.selected[it.name] {
-			prefix = "\x1b[32m[\xe2\x9c\x93]\x1b[0m"
-		}
-		lineText := prefix + " " + it.name
-		if t.cursor == skillCount {
-			lineText = "\x1b[7m" + lineText + "\x1b[0m"
+		name := it.name
+		style := ""
+		if it.isHeader {
+			selected, total := t.categorySelection(i)
+			if selected == total {
+				prefix = "[\xe2\x9c\x93]"
+			} else if selected > 0 {
+				prefix = "[-]"
+			}
+			name = fmt.Sprintf("%s (%d/%d)", name, selected, total)
+			style = "\x1b[1m\x1b[33m"
 		} else if t.selected[it.name] {
-			lineText = "\x1b[32m" + lineText + "\x1b[0m"
+			prefix = "[\xe2\x9c\x93]"
+			style = "\x1b[32m"
 		}
-		skillLineIdx[skillCount] = len(lines)
-		lines = append(lines, line{lineText})
+		if t.cursor == i {
+			style += "\x1b[7m"
+		}
+		itemLineIdx[i] = len(lines)
+		lines = append(lines, line{style + prefix + " " + name + "\x1b[0m"})
 		for _, d := range descriptionLines(it.desc, t.termW) {
 			lines = append(lines, line{"\x1b[2m" + d + "\x1b[0m"})
 		}
-		skillCount++
 	}
 
-	if skillCount > 0 {
-		cursorLine := skillLineIdx[t.cursor]
+	if len(t.items) > 0 {
+		cursorLine := itemLineIdx[t.cursor]
 		start := 0
 		if len(lines) > skillLines {
 			start = cursorLine - skillLines/2
@@ -717,9 +695,8 @@ func (t *tui) handleNormalInput(b []byte) bool {
 	case len(b) == 1 && b[0] == 'j':
 		fallthrough
 	case len(b) == 3 && b[0] == 0x1b && b[1] == '[' && b[2] == 'B':
-		skillCount := t.numSkills()
-		if skillCount > 0 {
-			t.cursor = (t.cursor + 1) % skillCount
+		if n := len(t.items); n > 0 {
+			t.cursor = (t.cursor + 1) % n
 			t.render()
 		}
 		return true
@@ -727,18 +704,23 @@ func (t *tui) handleNormalInput(b []byte) bool {
 	case len(b) == 1 && b[0] == 'k':
 		fallthrough
 	case len(b) == 3 && b[0] == 0x1b && b[1] == '[' && b[2] == 'A':
-		skillCount := t.numSkills()
-		if skillCount > 0 {
-			t.cursor = (t.cursor - 1 + skillCount) % skillCount
+		if n := len(t.items); n > 0 {
+			t.cursor = (t.cursor - 1 + n) % n
 			t.render()
 		}
 		return true
 
 	case len(b) == 1 && b[0] == ' ':
-		idx := t.skillIndex(t.cursor)
-		if idx >= 0 {
-			name := t.items[idx].name
-			t.selected[name] = !t.selected[name]
+		if len(t.items) > 0 {
+			item := t.items[t.cursor]
+			if item.isHeader {
+				selected, total := t.categorySelection(t.cursor)
+				for _, skill := range t.items[t.cursor+1 : t.cursor+1+total] {
+					t.selected[skill.name] = selected != total
+				}
+			} else {
+				t.selected[item.name] = !t.selected[item.name]
+			}
 			t.render()
 		}
 		return true
@@ -771,14 +753,14 @@ func (t *tui) handleNormalInput(b []byte) bool {
 		return false
 
 	case len(b) == 3 && b[0] == 0x1b && b[1] == '[' && b[2] == 'H': // Home
-		if t.numSkills() > 0 {
+		if len(t.items) > 0 {
 			t.cursor = 0
 			t.render()
 		}
 		return true
 
 	case len(b) == 3 && b[0] == 0x1b && b[1] == '[' && b[2] == 'F': // End
-		if n := t.numSkills(); n > 0 {
+		if n := len(t.items); n > 0 {
 			t.cursor = n - 1
 			t.render()
 		}
