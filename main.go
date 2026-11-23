@@ -503,7 +503,16 @@ func (t *tui) render() {
 
 	// Header
 	buf.WriteString("\x1b[1mskills-pick\x1b[0m  \x1b[2mselect skills to install\x1b[0m\r\n")
-	buf.WriteString("  \x1b[2mj/k nav | space toggle | enter install | / filter | q quit\x1b[0m\r\n")
+	if t.state == stateFilter {
+		buf.WriteString("  \x1b[2mup/down nav | space toggle | enter apply | esc clear\x1b[0m\r\n")
+	} else {
+		buf.WriteString("  \x1b[2mj/k nav | space toggle | enter install | / filter | q quit\x1b[0m\r\n")
+	}
+	if t.state == stateNormal && t.filter != "" {
+		buf.WriteString("  \x1b[2mFilter: ")
+		buf.WriteString(t.filter)
+		buf.WriteString(" (esc to clear)\x1b[0m")
+	}
 	buf.WriteString("\r\n")
 
 	skillLines := t.termH - 5 // header(4) + status(1)
@@ -669,6 +678,7 @@ func (t *tui) handleNormalInput(b []byte) bool {
 	case len(b) == 1 && b[0] == '/':
 		t.state = stateFilter
 		t.filter = ""
+		t.buildItems()
 		t.render()
 		return true
 
@@ -723,6 +733,9 @@ func (t *tui) handleNormalInput(b []byte) bool {
 		return false
 
 	case len(b) == 1 && b[0] == 0x1b: // Escape (bare)
+		if t.filter != "" {
+			return t.handleFilterInput(b)
+		}
 		return false
 
 	case len(b) == 3 && b[0] == 0x1b && b[1] == '[' && b[2] == 'H': // Home
@@ -767,10 +780,9 @@ func (t *tui) handleFilterInput(b []byte) bool {
 		}
 		return true
 
-	case len(b) == 3 && b[0] == 0x1b && b[1] == '[' && b[2] == '3': // Delete (escape sequence)
-		// Need to read the ~ byte too
-		// For simplicity, backspace handles deletion
-		return true
+	case len(b) == 1 && b[0] == ' ',
+		len(b) == 3 && b[0] == 0x1b && b[1] == '[':
+		return t.handleNormalInput(b)
 
 	case b[0] >= 32 && b[0] <= 126: // Printable ASCII
 		t.filter += string(b[0])
